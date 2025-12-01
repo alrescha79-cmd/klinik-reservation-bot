@@ -11,16 +11,16 @@ Bot WhatsApp otomatis untuk sistem reservasi/pendaftaran pasien di Klinik atau P
 
 ## ✨ Fitur Utama
 
-- 🤖 **WhatsApp Bot Otomatis** - Berbasis Baileys Multi-Device
+- 🏫 **Manajemen Poli** - Kelola departemen klinik (Poli Umum, Gigi, KIA, dll)
+- 👨‍⚕️ **Jadwal Poli & Dokter** - Tampilkan jadwal praktik poli dan dokter
 - 👤 **Pendaftaran Pasien** - Daftar pasien baru langsung via WhatsApp
-- 👨‍⚕️ **Jadwal Dokter** - Tampilkan jadwal praktik dokter
-- 📅 **Sistem Reservasi** - Buat reservasi dengan pilihan tanggal & waktu
-- 🎫 **Nomor Antrian** - Generate nomor antrian otomatis
+- 📅 **Sistem Reservasi** - Buat reservasi dengan pilihan poli, dokter, tanggal & waktu
+- 🎫 **Nomor Antrian** - Generate nomor antrian otomatis per poli
 - 📊 **Cek Status** - Cek status reservasi dan antrian
-- ❌ **Pembatalan** - Batalkan reservasi dengan mudah
+- ❌ **Pembatalan Fleksibel** - Batalkan atau kembali ke menu kapan saja dengan BATAL/MENU
 - 🔌 **REST API** - Full API endpoints untuk integrasi
 - 💾 **Database Support** - PostgreSQL, MySQL, atau SQLite
-- 📝 **Logging** - Structured logging dengan Pino
+- � **Logging** - Structured logging dengan Pino
 - ✅ **Type-Safe** - Full TypeScript dengan strict mode
 
 ---
@@ -107,11 +107,14 @@ Buka terminal, scan QR Code yang muncul dengan WhatsApp:
 |----------|--------|
 | `menu`, `mulai`, `hi`, `halo` | Tampilkan menu utama |
 | `daftar` | Pendaftaran pasien baru |
-| `jadwal` | Lihat jadwal praktik dokter |
+| `jadwal` | Lihat jadwal poli (departemen klinik) |
+| `jadwal dokter` | Lihat jadwal praktik dokter |
 | `reservasi` | Buat reservasi/janji temu |
 | `cek antrian`, `cek` | Cek status reservasi |
 | `batal` | Batalkan reservasi |
 | `bantuan`, `help` | Tampilkan bantuan |
+
+> **🆕 Tip**: Di setiap langkah interaktif, ketik `BATAL` atau `MENU` untuk kembali ke menu utama.
 
 ### Flow Pendaftaran Pasien
 
@@ -124,9 +127,11 @@ Buka terminal, scan QR Code yang muncul dengan WhatsApp:
 
 1. Kirim pesan: **`reservasi`**
 2. Pilih dokter (balas dengan angka)
-3. Pilih tanggal (balas dengan angka)
+3. Pilih tanggal (balas dengan angka)  
 4. Pilih waktu (balas dengan angka)
 5. Bot berikan nomor antrian (ex: `A-015`)
+
+> **🔙 Cancel**: Ketik `BATAL` atau `MENU` kapan saja untuk kembali
 
 ---
 
@@ -295,9 +300,19 @@ model Patient {
   id           Int           @id @default(autoincrement())
   name         String
   nik          String        @unique
-  phone        String
+  phone        String        @unique
   birthDate    DateTime
   address      String?
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+}
+
+model Poli {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  schedule     String        // JSON string
+  isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   reservations Reservation[]
 }
@@ -306,14 +321,16 @@ model Doctor {
   id           Int           @id @default(autoincrement())
   name         String
   specialty    String
-  schedule     Json
+  schedule     String        // JSON string
+  createdAt    DateTime      @default(now())
   reservations Reservation[]
 }
 
 model Reservation {
   id              Int      @id @default(autoincrement())
   patientId       Int
-  doctorId        Int
+  poliId          Int
+  doctorId        Int?
   reservationDate DateTime
   reservationTime String
   queueNumber     String
@@ -321,7 +338,8 @@ model Reservation {
   createdAt       DateTime @default(now())
   
   patient Patient @relation(fields: [patientId], references: [id])
-  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  poli    Poli    @relation(fields: [poliId], references: [id])
+  doctor  Doctor? @relation(fields: [doctorId], references: [id])
 }
 ```
 

@@ -4,6 +4,7 @@ import { formatPhoneNumber, formatWAMessage, parsePatientInput } from '../../uti
 import { sendMessage } from '../baileys';
 import { patientService } from '../../modules/patient/patient.service';
 import { doctorService } from '../../modules/doctor/doctor.service';
+import { poliService } from '../../modules/poli/poli.service';
 import { reservationService } from '../../modules/reservation/reservation.service';
 
 // User session state management
@@ -131,6 +132,10 @@ const processMessage = async (
       await handleJadwal(jid, phone);
       break;
 
+    case 'JADWAL DOKTER':
+      await handleJadwalDokter(jid, phone);
+      break;
+
     case 'RESERVASI':
       await handleReservasi(jid, phone);
       break;
@@ -174,10 +179,15 @@ const handleStatefulMessage = async (
   text: string,
   session: UserSession
 ): Promise<void> => {
-  // Allow cancel at any time
-  if (text.toUpperCase() === 'BATAL' || text.toUpperCase() === 'CANCEL') {
+  // Allow cancel or return to menu at any time
+  const upperText = text.toUpperCase();
+  if (upperText === 'BATAL' || upperText === 'CANCEL' || upperText === 'MENU') {
     clearSession(phone);
-    await sendMessage(jid, '❌ Proses dibatalkan.\n\nKetik *MENU* untuk kembali ke menu utama.');
+    if (upperText === 'MENU') {
+      await sendMessage(jid, formatWAMessage.welcome());
+    } else {
+      await sendMessage(jid, '❌ Proses dibatalkan.\n\nKetik *MENU* untuk kembali ke menu utama.');
+    }
     return;
   }
 
@@ -188,6 +198,14 @@ const handleStatefulMessage = async (
 
     case 'AWAITING_DOCTOR_SELECTION':
       await processDoctorSelection(jid, phone, text);
+      break;
+
+    case 'AWAITING_SCHEDULE_SELECTION':
+      await processScheduleSelection(jid, phone, text);
+      break;
+
+    case 'AWAITING_DOCTOR_SCHEDULE_SELECTION':
+      await processDoctorScheduleSelection(jid, phone, text);
       break;
 
     case 'AWAITING_DATE_SELECTION':
@@ -272,9 +290,24 @@ const processRegistration = async (
 };
 
 /**
- * Handle JADWAL command
+ * Handle JADWAL command (show Poli schedules)
  */
 const handleJadwal = async (jid: string, phone: string): Promise<void> => {
+  const polis = await poliService.findAll();
+
+  if (polis.length === 0) {
+    await sendMessage(jid, '📋 Belum ada data poli. Silakan hubungi admin.');
+    return;
+  }
+
+  updateSession(phone, 'AWAITING_SCHEDULE_SELECTION', { polis });
+  await sendMessage(jid, formatWAMessage.poliList(polis));
+};
+
+/**
+ * Handle JADWAL DOKTER command (show Doctor schedules)
+ */
+const handleJadwalDokter = async (jid: string, phone: string): Promise<void> => {
   const doctors = await doctorService.findAll();
 
   if (doctors.length === 0) {
@@ -282,7 +315,74 @@ const handleJadwal = async (jid: string, phone: string): Promise<void> => {
     return;
   }
 
+  updateSession(phone, 'AWAITING_DOCTOR_SCHEDULE_SELECTION', { doctors });
   await sendMessage(jid, formatWAMessage.doctorList(doctors));
+};
+
+/**
+ * Process schedule selection (for Poli)
+ */
+const processScheduleSelection = async (
+  jid: string,
+  phone: string,
+  text: string
+): Promise<void> => {
+  const session = getSession(phone);
+  const polis = session.data.polis || [];
+
+  const selection = parseInt(text);
+  if (isNaN(selection) || selection < 1 || selection > polis.length) {
+    await sendMessage(
+      jid,
+      formatWAMessage.error(`Pilihan tidak valid. Balas dengan angka 1-${polis.length}.`)
+    );
+    return;
+  }
+
+  const selectedPoli = polis[selection - 1];
+  clearSession(phone);
+
+  await sendMessage(
+    jid,
+    formatWAMessage.poliScheduleDetail(
+      selectedPoli.name,
+      selectedPoli.description,
+      selectedPoli.schedule
+    )
+  );
+};
+
+/**
+ * Process doctor schedule selection
+ */
+const processDoctorScheduleSelection = async (
+  jid: string,
+  phone: string,
+  text: string
+): Promise<void> => {
+  const session = getSession(phone);
+  const doctors = session.data.doctors || [];
+
+  const selection = parseInt(text);
+  if (isNaN(selection) || selection < 1 || selection > doctors.length) {
+    await sendMessage(
+      jid,
+      formatWAMessage.error(`Pilihan tidak valid. Balas dengan angka 1-${doctors.length}.`)
+    );
+    return;
+  }
+
+  const selectedDoctor = doctors[selection - 1];
+  clearSession(phone);
+
+  await sendMessage(
+    jid,
+    formatWAMessage.doctorScheduleDetail(
+      selectedDoctor.name,
+      selectedDoctor.specialty,
+      selectedDoctor.schedule
+    )
+  );
 };
 
 /**
@@ -349,7 +449,7 @@ const processDoctorSelection = async (
 
   await sendMessage(
     jid,
-    `👨‍⚕️ Dokter: *${selectedDoctor.name}*\n\n📅 Pilih tanggal:\n${dateList}\n\nBalas dengan *angka* untuk memilih tanggal.`
+    `👨‍⚕️ Dokter: *${selectedDoctor.name}*\n\n📅 Pilih tanggal:\n${dateList}\n\nBalas dengan *angka* untuk memilih tanggal.\nKetik *BATAL* atau *MENU* untuk kembali.`
   );
 
   updateSession(phone, 'AWAITING_DATE_SELECTION', { dates });
@@ -388,7 +488,7 @@ const processDateSelection = async (
 
   await sendMessage(
     jid,
-    `📅 Tanggal: *${new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}*\n\n🕐 Pilih waktu:\n${timeList}\n\nBalas dengan *angka* untuk memilih waktu.`
+    `📅 Tanggal: *${new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}*\n\n🕐 Pilih waktu:\n${timeList}\n\nBalas dengan *angka* untuk memilih waktu.\nKetik *BATAL* atau *MENU* untuk kembali.`
   );
 
   updateSession(phone, 'AWAITING_TIME_SELECTION', { timeSlots });
@@ -414,8 +514,10 @@ const processTimeSelection = async (
   const selectedTime = timeSlots[selection - 1];
 
   try {
+    // TEMPORARY: Use default Poli Umum (id=1) until Poli selection is implemented
     const reservation = await reservationService.create({
       patientId: session.data.patientId,
+      poliId: 1, // Default to Poli Umum
       doctorId: session.data.doctorId,
       reservationDate: session.data.reservationDate,
       reservationTime: selectedTime,
@@ -468,7 +570,9 @@ const handleCekAntrian = async (jid: string, phone: string): Promise<void> => {
   let message = '📋 *Reservasi Aktif Anda:*\n\n';
   activeReservations.forEach((r, i) => {
     message += `${i + 1}. 🎫 *${r.queueNumber}*\n`;
-    message += `   👨‍⚕️ ${r.doctor.name}\n`;
+    if (r.doctor) {
+      message += `   👨‍⚕️ ${r.doctor.name}\n`;
+    }
     message += `   📅 ${new Date(r.reservationDate).toLocaleDateString('id-ID')}\n`;
     message += `   🕐 ${r.reservationTime}\n`;
     message += `   📌 Status: ${r.status}\n\n`;
@@ -502,7 +606,8 @@ const handleBatal = async (jid: string, phone: string): Promise<void> => {
 
   let message = '🗑️ *Pilih reservasi yang ingin dibatalkan:*\n\n';
   activeReservations.forEach((r, i) => {
-    message += `${i + 1}. 🎫 ${r.queueNumber} - ${r.doctor.name} (${new Date(r.reservationDate).toLocaleDateString('id-ID')})\n`;
+    const doctorName = r.doctor ? r.doctor.name : 'Dokter Jaga';
+    message += `${i + 1}. 🎫 ${r.queueNumber} - ${doctorName} (${new Date(r.reservationDate).toLocaleDateString('id-ID')})\n`;
   });
   message += '\nBalas dengan *angka* untuk memilih.\nKetik *BATAL* untuk membatalkan proses.';
 

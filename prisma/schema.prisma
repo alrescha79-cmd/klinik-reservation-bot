@@ -32,10 +32,22 @@ model Doctor {
   reservations Reservation[]
 }
 
+model Poli {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  schedule     String        // JSON string for SQLite compatibility
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  reservations Reservation[]
+}
+
 model Reservation {
   id              Int      @id @default(autoincrement())
   patientId       Int
-  doctorId        Int
+  poliId          Int
+  doctorId        Int?
   reservationDate DateTime
   reservationTime String
   queueNumber     String
@@ -44,9 +56,11 @@ model Reservation {
   updatedAt       DateTime @updatedAt
 
   patient Patient @relation(fields: [patientId], references: [id])
-  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+  poli    Poli    @relation(fields: [poliId], references: [id])
+  doctor  Doctor? @relation(fields: [doctorId], references: [id])
 
   @@index([patientId])
+  @@index([poliId])
   @@index([doctorId])
   @@index([reservationDate])
 }
