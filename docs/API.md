@@ -196,6 +196,105 @@ DELETE /api/doctors/:id
 
 ---
 
+## 🏫 Poli Endpoints
+
+### 1. Get All Poli
+```http
+GET /api/polis
+```
+
+**Query Parameters:**
+- `activeOnly` (optional, default: `true`) - Only show active poli
+
+**Response:**
+```json
+{
+  "polis": [
+    {
+      "id": 1,
+      "name": "Poli Umum",
+      "description": "Pelayanan kesehatan umum",
+      "schedule": {
+        "senin": ["08:00", "14:00"],
+        "selasa": ["08:00", "14:00"],
+        "rabu": ["08:00", "14:00"],
+        "kamis": ["08:00", "14:00"],
+        "jumat": ["08:00", "11:00"]
+      },
+      "isActive": true,
+      "createdAt": "2025-12-01T02:00:00.000Z"
+    }
+  ]
+}
+```
+
+### 2. Get Poli by ID
+```http
+GET /api/polis/:id
+```
+
+**Response:**
+```json
+{
+  "poli": {
+    "id": 1,
+    "name": "Poli Umum",
+    "description": "Pelayanan kesehatan umum",
+    "schedule": {
+      "senin": ["08:00", "14:00"],
+      "selasa": ["08:00", "14:00"]
+    },
+    "isActive": true,
+    "createdAt": "2025-12-01T02:00:00.000Z",
+    "reservations": []
+  }
+}
+```
+
+### 3. Create Poli
+```http
+POST /api/polis
+```
+
+**Request Body:**
+```json
+{
+  "name": "Poli Gigi",
+  "description": "Pelayanan kesehatan gigi dan mulut",
+  "schedule": {
+    "senin": ["08:00", "12:00"],
+    "rabu": ["08:00", "12:00"],
+    "jumat": ["08:00", "12:00"]
+  },
+  "isActive": true
+}
+```
+
+### 4. Update Poli
+```http
+PUT /api/polis/:id
+```
+
+**Request Body:**
+```json
+{
+  "name": "Poli Gigi Updated",
+  "schedule": {
+    "senin": ["08:00", "14:00"],
+    "rabu": ["08:00", "14:00"]
+  }
+}
+```
+
+### 5. Delete Poli (Soft Delete)
+```http
+DELETE /api/polis/:id
+```
+
+**Note:** This performs a soft delete by setting `isActive` to `false`.
+
+---
+
 ## 📅 Reservation Endpoints
 
 ### 1. Get All Reservations
@@ -263,11 +362,14 @@ POST /api/reservations
 ```json
 {
   "patientId": 1,
+  "poliId": 1,
   "doctorId": 1,
   "reservationDate": "2025-12-05",
   "reservationTime": "09:00"
 }
 ```
+
+**Note:** `doctorId` is optional. Reservasi bisa dibuat dengan hanya poli tanpa dokter spesifik.
 
 **Response:**
 ```json
@@ -337,14 +439,37 @@ daftar
 2. User mengirim: `Budi Santoso#1234567890123456#1990-05-15`
 3. Bot konfirmasi pendaftaran berhasil
 
-### 3. Lihat Jadwal Dokter
+### 3. Lihat Jadwal Poli
 ```
 jadwal
 ```
 
+**Response:** Daftar poli dengan jadwal operasional.
+
+**Flow:**
+1. User ketik `jadwal`
+2. Bot tampilkan daftar poli (1. Poli Umum, 2. Poli Gigi, dst.)
+3. User pilih nomor poli
+4. Bot tampilkan detail jadwal poli tersebut
+
+**Cancel/Return:** Ketik `BATAL` atau `MENU` untuk kembali.
+
+### 4. Lihat Jadwal Dokter
+```
+jadwal dokter
+```
+
 **Response:** Daftar dokter dengan spesialisasi dan jadwal praktik.
 
-### 4. Buat Reservasi
+**Flow:**
+1. User ketik `jadwal dokter`
+2. Bot tampilkan daftar dokter
+3. User pilih nomor dokter
+4. Bot tampilkan detail jadwal dokter tersebut
+
+**Cancel/Return:** Ketik `BATAL` atau `MENU` untuk kembali.
+
+### 5. Buat Reservasi
 ```
 reservasi
 ```
@@ -358,7 +483,9 @@ reservasi
 6. User pilih nomor waktu
 7. Bot konfirmasi reservasi + nomor antrian
 
-### 5. Cek Antrian
+**Cancel/Return:** Di setiap step, user bisa ketik `BATAL` atau `MENU` untuk kembali ke menu utama.
+
+### 6. Cek Antrian
 ```
 cek antrian
 cek
@@ -367,7 +494,7 @@ antrian
 
 **Response:** Daftar reservasi aktif user dengan nomor antrian.
 
-### 6. Batalkan Reservasi
+### 7. Batalkan Reservasi
 ```
 batal
 ```
@@ -376,6 +503,36 @@ batal
 1. Bot tampilkan reservasi aktif
 2. User pilih nomor reservasi yang akan dibatalkan
 3. Bot konfirmasi pembatalan
+
+**Cancel/Return:** Ketik `BATAL` atau `MENU` untuk membatalkan proses.
+
+---
+
+## ⚙️ Special Commands
+
+### Cancel/Return Command
+
+Di semua flow interaktif (pendaftaran, jadwal, reservasi, dll), user dapat:
+
+```
+batal
+cancel
+menu
+```
+
+- **`BATAL`/`CANCEL`** - Membatalkan proses saat ini dan kembali ke idle
+- **`MENU`** - Langsung kembali ke menu utama
+
+**Contoh:**
+```
+User: RESERVASI
+Bot: Pilih dokter:
+     1. Dr. Ahmad
+     2. Dr. Siti
+     
+User: MENU
+Bot: [Tampilkan menu utama]
+```
 
 ---
 

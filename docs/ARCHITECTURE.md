@@ -31,6 +31,7 @@ Dokumentasi arsitektur WhatsApp Bot Reservasi Klinik/Puskesmas.
 │     Business Logic Layer       │
 │  (Services)                    │
 │  - Patient Service             │
+│  - Poli Service                │
 │  - Doctor Service              │
 │  - Reservation Service         │
 └────────────┬───────────────────┘
@@ -51,6 +52,7 @@ Dokumentasi arsitektur WhatsApp Bot Reservasi Klinik/Puskesmas.
 │        REST API Layer          │
 │  (Express.js Controllers)      │
 │  - Patient Endpoints           │
+│  - Poli Endpoints              │
 │  - Doctor Endpoints            │
 │  - Reservation Endpoints       │
 └────────────────────────────────┘
@@ -154,36 +156,38 @@ export default router;
 ## 🗄️ Database Schema
 
 ```prisma
-┌──────────────┐         ┌──────────────┐
-│   Patient    │         │    Doctor    │
-├──────────────┤         ├──────────────┤
-│ id           │         │ id           │
-│ name         │         │ name         │
-│ nik          │         │ specialty    │
-│ phone        │         │ schedule     │
-│ birthDate    │         │ createdAt    │
-│ address      │         └──────────────┘
-│ createdAt    │                │
-└──────┬───────┘                │
-       │                        │
-       │    ┌─────────────────┐ │
-       └────┤  Reservation    ├─┘
-            ├─────────────────┤
-            │ id              │
-            │ patientId   (FK)│
-            │ doctorId    (FK)│
-            │ reservationDate │
-            │ reservationTime │
-            │ queueNumber     │
-            │ status          │
-            │ createdAt       │
-            └─────────────────┘
+┌──────────────┐         ┌──────────┐         ┌──────────────┐
+│   Patient    │         │   Poli   │         │    Doctor    │
+├──────────────┤         ├──────────┤         ├──────────────┤
+│ id           │         │ id       │         │ id           │
+│ name         │         │ name     │         │ name         │
+│ nik          │         │ descrip. │         │ specialty    │
+│ phone        │         │ schedule │         │ schedule     │
+│ birthDate    │         │ isActive │         │ createdAt    │
+│ address      │         │ createdAt│         └──────────────┘
+│ createdAt    │         └─────┬────┘                │
+└──────┬───────┘               │                     │
+       │                       │                     │
+       │       ┌───────────────┴─────────┐           │
+       └───────┤     Reservation         ├───────────┘
+               ├─────────────────────────┤
+               │ id                      │
+               │ patientId          (FK) │
+               │ poliId             (FK) │
+               │ doctorId (nullable)(FK) │
+               │ reservationDate         │
+               │ reservationTime         │
+               │ queueNumber             │
+               │ status                  │
+               │ createdAt               │
+               └─────────────────────────┘
 ```
 
 ### Relationships:
 - **Patient** → **Reservation**: One-to-Many
-- **Doctor** → **Reservation**: One-to-Many
-- **Reservation** belongs to one **Patient** and one **Doctor**
+- **Poli** → **Reservation**: One-to-Many
+- **Doctor** → **Reservation**: One-to-Many (optional)
+- **Reservation** belongs to one **Patient**, one **Poli**, and optionally one **Doctor**
 
 ---
 
@@ -250,12 +254,16 @@ Send JSON response
 ```
 IDLE (default)
   ├─→ AWAITING_REGISTRATION
+  ├─→ AWAITING_SCHEDULE_SELECTION (for Poli)
+  ├─→ AWAITING_DOCTOR_SCHEDULE_SELECTION (for Doctor)
   ├─→ AWAITING_DOCTOR_SELECTION
   │     └─→ AWAITING_DATE_SELECTION
   │           └─→ AWAITING_TIME_SELECTION
   │                 └─→ IDLE (complete)
   └─→ AWAITING_CANCEL_CONFIRMATION
         └─→ IDLE (complete)
+        
+NOTE: User can type BATAL or MENU at any state to return to IDLE
 ```
 
 **Session Storage:**
@@ -284,6 +292,10 @@ Each module follows consistent structure:
     ├── patient.controller.ts  ─┐
     ├── patient.service.ts     ─┼─ Same pattern
     └── patient.route.ts       ─┘  for all modules
+  /poli
+    ├── poli.controller.ts
+    ├── poli.service.ts
+    └── poli.route.ts
   /doctor
     ├── doctor.controller.ts
     ├── doctor.service.ts

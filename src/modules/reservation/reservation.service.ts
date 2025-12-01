@@ -14,26 +14,27 @@ export const reservationService = {
     const date = new Date(validated.reservationDate);
     const dateString = date.toISOString().split('T')[0].replace(/-/g, '');
 
-    // Count existing reservations for this doctor on this date
+    // Count existing reservations for this poli on this date
     const existingCount = await prisma.reservation.count({
       where: {
-        doctorId: validated.doctorId,
+        poliId: validated.poliId,
         reservationDate: date,
       },
     });
 
-    // Get doctor for prefix
-    const doctor = await prisma.doctor.findUnique({
-      where: { id: validated.doctorId },
+    // Get poli for prefix
+    const poli = await prisma.poli.findUnique({
+      where: { id: validated.poliId },
     });
 
-    const prefix = doctor?.specialty.charAt(0).toUpperCase() || 'A';
+    const prefix = poli?.name.charAt(0).toUpperCase() || 'P';
     const queueNumber = generateQueueNumber(prefix, existingCount + 1);
 
     return prisma.reservation.create({
       data: {
         patientId: validated.patientId,
-        doctorId: validated.doctorId,
+        poliId: validated.poliId,
+        doctorId: validated.doctorId || null,
         reservationDate: date,
         reservationTime: validated.reservationTime,
         queueNumber,
@@ -41,6 +42,7 @@ export const reservationService = {
       },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
     });
@@ -54,6 +56,7 @@ export const reservationService = {
       where: { id },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
     });
@@ -66,6 +69,7 @@ export const reservationService = {
     return prisma.reservation.findMany({
       where: { patientId },
       include: {
+        poli: true,
         doctor: true,
       },
       orderBy: {
@@ -101,6 +105,7 @@ export const reservationService = {
       },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
       orderBy: [
@@ -144,6 +149,7 @@ export const reservationService = {
       },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
     });
@@ -156,6 +162,7 @@ export const reservationService = {
     return prisma.reservation.findMany({
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
       orderBy: {
@@ -173,6 +180,7 @@ export const reservationService = {
       data: { status },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
     });
@@ -211,6 +219,7 @@ export const reservationService = {
       },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
     });
@@ -272,6 +281,7 @@ export const reservationService = {
       },
       include: {
         patient: true,
+        poli: true,
         doctor: true,
       },
       orderBy: [

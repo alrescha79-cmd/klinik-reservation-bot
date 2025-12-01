@@ -14,13 +14,22 @@ export const doctorSchema = z.object({
   schedule: z.record(z.string(), z.array(z.string())), // { "senin": ["08:00", "12:00"], ... }
 });
 
+export const poliSchema = z.object({
+  name: z.string().min(2, 'Nama poli minimal 2 karakter'),
+  description: z.string().optional(),
+  schedule: z.record(z.string(), z.array(z.string())), // { "senin": ["08:00", "14:00"], ... }
+  isActive: z.boolean().optional(),
+});
+
 export const reservationSchema = z.object({
   patientId: z.number().positive(),
-  doctorId: z.number().positive(),
+  poliId: z.number().positive(),
+  doctorId: z.number().positive().optional(),
   reservationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD'),
   reservationTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format waktu harus HH:mm'),
 });
 
 export type PatientInput = z.infer<typeof patientSchema>;
 export type DoctorInput = z.infer<typeof doctorSchema>;
+export type PoliInput = z.infer<typeof poliSchema>;
 export type ReservationInput = z.infer<typeof reservationSchema>;

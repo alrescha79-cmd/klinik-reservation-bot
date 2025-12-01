@@ -10,31 +10,8 @@ import { getSessionPath } from '../config/env';
 import logger from '../utils/logger';
 import fs from 'fs';
 import path from 'path';
-import { handleMessage } from './handlers/messageHandler';
 
 let sock: WASocket | null = null;
-
-/**
- * Register message event handlers
- */
-const registerMessageHandler = (socket: WASocket): void => {
-  socket.ev.on('messages.upsert', async (m) => {
-    const messages = m.messages;
-
-    for (const message of messages) {
-      // Only process new messages (notify = new message)
-      if (m.type === 'notify') {
-        try {
-          await handleMessage(socket, message);
-        } catch (error) {
-          logger.error('Error in message handler:', error);
-        }
-      }
-    }
-  });
-
-  logger.info('Message handler registered');
-};
 
 /**
  * Initialize WhatsApp connection using Baileys
@@ -54,9 +31,6 @@ export const initBaileys = async (): Promise<WASocket> => {
     logger: logger.pino.child({ level: 'warn' }) as any,
     browser: ['WA Bot Klinik', 'Chrome', '1.0.0'],
   });
-
-  // Register message handler immediately after socket creation
-  registerMessageHandler(sock);
 
   // Handle connection updates
   sock.ev.on('connection.update', async (update) => {

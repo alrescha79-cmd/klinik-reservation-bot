@@ -6,6 +6,7 @@ import logger from './utils/logger';
 import patientRoutes from './modules/patient/patient.route';
 import doctorRoutes from './modules/doctor/doctor.route';
 import reservationRoutes from './modules/reservation/reservation.route';
+import poliRoutes from './modules/poli/poli.route';
 
 // Create Express app
 const app: Application = express();
@@ -31,6 +32,7 @@ app.get('/health', (req: Request, res: Response) => {
 // API routes
 app.use('/api/patients', patientRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/poli', poliRoutes);
 app.use('/api/reservations', reservationRoutes);
 
 // Root route
@@ -42,6 +44,7 @@ app.get('/', (req: Request, res: Response) => {
       health: '/health',
       patients: '/api/patients',
       doctors: '/api/doctors',
+      poli: '/api/poli',
       reservations: '/api/reservations',
     },
   });

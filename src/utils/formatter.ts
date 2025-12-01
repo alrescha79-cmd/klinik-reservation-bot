@@ -69,11 +69,12 @@ export const formatPhoneNumber = (phone: string): string => {
  */
 export const formatWAMessage = {
   welcome: (): string => `
-🏥 *Selamat Datang di Bot Reservasi Klinik*
+🏥 *Selamat Datang di Bot Reservasi ${process.env.CLINIC_NAME || 'Klinik'}*
 
 Silakan pilih menu:
 1️⃣ Ketik *DAFTAR* - Pendaftaran pasien baru
-2️⃣ Ketik *JADWAL* - Lihat jadwal dokter
+2️⃣ Ketik *JADWAL* - Lihat jadwal poli
+2️⃣ Ketik *JADWAL DOKTER* - Lihat jadwal dokter
 3️⃣ Ketik *RESERVASI* - Buat reservasi
 4️⃣ Ketik *CEK ANTRIAN* - Cek status antrian
 5️⃣ Ketik *BATAL* - Batalkan reservasi
@@ -90,6 +91,8 @@ Silakan kirim data Anda dengan format:
 
 Contoh:
 _Budi Santoso#1234567890123456#1990-05-15_
+
+Ketik *BATAL* atau *MENU* untuk kembali.
 `.trim(),
 
   registrationSuccess: (name: string, nik: string): string => `
@@ -101,6 +104,23 @@ _Budi Santoso#1234567890123456#1990-05-15_
 Anda sekarang dapat membuat reservasi.
 Ketik *RESERVASI* untuk membuat janji.
 `.trim(),
+
+  poliList: (
+    polis: Array<{ id: number; name: string; description: string | null }>
+  ): string => {
+    const list = polis
+      .map((p, i) => `${i + 1}. *${p.name}*${p.description ? ` - ${p.description}` : ''}`)
+      .join('\n');
+
+    return `
+📋 *Daftar Poli*
+
+${list}
+
+Balas dengan *angka* untuk memilih poli.
+Ketik *BATAL* atau *MENU* untuk kembali.
+`.trim();
+  },
 
   doctorList: (
     doctors: Array<{ id: number; name: string; specialty: string }>
@@ -115,6 +135,75 @@ Ketik *RESERVASI* untuk membuat janji.
 ${list}
 
 Balas dengan *angka* untuk memilih dokter.
+Ketik *BATAL* atau *MENU* untuk kembali.
+`.trim();
+  },
+
+  poliScheduleDetail: (
+    name: string,
+    description: string | null,
+    schedule: Record<string, string[]>
+  ): string => {
+    const dayNames: Record<string, string> = {
+      senin: 'Senin',
+      selasa: 'Selasa',
+      rabu: 'Rabu',
+      kamis: 'Kamis',
+      jumat: 'Jumat',
+      sabtu: 'Sabtu',
+      minggu: 'Minggu',
+    };
+
+    const scheduleLines = Object.entries(schedule)
+      .map(([day, times]) => {
+        const dayName = dayNames[day.toLowerCase()] || day;
+        const timeRange = times.length === 2 ? `${times[0]} - ${times[1]}` : times.join(', ');
+        return `• ${dayName}: ${timeRange}`;
+      })
+      .join('\n');
+
+    return `
+🏥 *${name}*
+${description ? `📝 ${description}` : ''}
+
+📅 *Jadwal Buka:*
+${scheduleLines || 'Jadwal belum tersedia'}
+
+Ketik *MENU* untuk kembali ke menu utama.
+`.trim();
+  },
+
+  doctorScheduleDetail: (
+    name: string,
+    specialty: string,
+    schedule: Record<string, string[]>
+  ): string => {
+    const dayNames: Record<string, string> = {
+      senin: 'Senin',
+      selasa: 'Selasa',
+      rabu: 'Rabu',
+      kamis: 'Kamis',
+      jumat: 'Jumat',
+      sabtu: 'Sabtu',
+      minggu: 'Minggu',
+    };
+
+    const scheduleLines = Object.entries(schedule)
+      .map(([day, times]) => {
+        const dayName = dayNames[day.toLowerCase()] || day;
+        const timeRange = times.length === 2 ? `${times[0]} - ${times[1]}` : times.join(', ');
+        return `• ${dayName}: ${timeRange}`;
+      })
+      .join('\n');
+
+    return `
+👨‍⚕️ *${name}*
+🏥 Spesialisasi: ${specialty}
+
+📅 *Jadwal Praktik:*
+${scheduleLines || 'Jadwal belum tersedia'}
+
+Ketik *MENU* untuk kembali ke menu utama.
 `.trim();
   },
 
@@ -164,7 +253,8 @@ Ketik *BANTUAN* untuk panduan.
 
 *Menu Utama:*
 • DAFTAR - Daftar sebagai pasien baru
-• JADWAL - Lihat jadwal praktik dokter
+• JADWAL - Lihat jadwal poli
+• JADWAL DOKTER - Lihat jadwal praktik dokter
 • RESERVASI - Buat reservasi/janji
 • CEK ANTRIAN - Cek status antrian Anda
 • BATAL - Batalkan reservasi
